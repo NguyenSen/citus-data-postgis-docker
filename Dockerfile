@@ -345,9 +345,26 @@ RUN set -ex \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# add citus to default PostgreSQL config
+RUN echo "shared_preload_libraries='postgis'" >> /usr/share/postgresql/postgresql.conf.sample
+
 # add scripts to run after initdb
 COPY 001-create-citus-extension.sql /docker-entrypoint-initdb.d/
 
+# add scripts to run after initdb
+
+COPY ./initdb-postgis.sh /docker-entrypoint-initdb.d/10_postgis.sh
+COPY ./update-postgis.sh /usr/local/bin
+
+RUN set -ex \
+    # Is the "ca-certificates" package installed? (for accessing remote raster files)
+    #   https://github.com/postgis/docker-postgis/issues/307
+    && dpkg-query -W -f='${Status}' ca-certificates 2>/dev/null | grep -c "ok installed" \
+    \
+    # list postgresql, postgis version
+    && cat /_pgis_full_version.txt
+    
+ 
 # add health check script
 COPY pg_healthcheck wait-for-manager.sh /
 RUN chmod +x /wait-for-manager.sh
